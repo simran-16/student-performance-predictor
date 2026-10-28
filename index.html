@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Performance Predictor using Fuzzy Logic</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">&mu;</span>
+        <div>
+          <h1>Student Performance Predictor</h1>
+          <p>using Fuzzy Logic &middot; Mamdani inference &middot; Centroid defuzzification</p>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="evaluateBtn" class="btn btn-primary" type="button">Evaluate</button>
+        <button id="resetBtn" class="btn btn-ghost" type="button">Reset</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs-bar">
+    <div class="wrap">
+      <div class="tabs" role="tablist" aria-label="Sections">
+        <button class="tab active" type="button" role="tab" data-tab="overview" aria-selected="true">Overview</button>
+        <button class="tab" type="button" role="tab" data-tab="membership" aria-selected="false">Membership Functions</button>
+        <button class="tab" type="button" role="tab" data-tab="rules" aria-selected="false">Rule Inspector</button>
+        <button class="tab" type="button" role="tab" data-tab="whatif" aria-selected="false">What-if Comparison</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="wrap">
+
+    <!-- ================= OVERVIEW ================= -->
+    <section id="panel-overview" class="panel active" role="tabpanel">
+      <div class="grid two">
+        <div class="card">
+          <h2>Student Inputs</h2>
+          <p class="card-sub">Move the sliders to describe a student. Results update instantly.</p>
+
+          <div class="field">
+            <div class="field-head">
+              <label for="attendance">Attendance</label>
+              <output id="attendanceVal" for="attendance">75%</output>
+            </div>
+            <input type="range" id="attendance" min="0" max="100" step="1" value="75">
+            <div class="scale"><span>0%</span><span>100%</span></div>
+          </div>
+
+          <div class="field">
+            <div class="field-head">
+              <label for="internal">Internal Assessment Marks</label>
+              <output id="internalVal" for="internal">60 / 100</output>
+            </div>
+            <input type="range" id="internal" min="0" max="100" step="1" value="60">
+            <div class="scale"><span>0</span><span>100</span></div>
+          </div>
+
+          <div class="field">
+            <div class="field-head">
+              <label for="study">Daily Study Hours</label>
+              <output id="studyVal" for="study">4.0 hrs</output>
+            </div>
+            <input type="range" id="study" min="0" max="10" step="0.5" value="4">
+            <div class="scale"><span>0 hrs</span><span>10 hrs</span></div>
+          </div>
+        </div>
+
+        <div class="card result-card" id="resultCard">
+          <h2>Estimated Performance</h2>
+          <p class="card-sub">Crisp score produced by centroid defuzzification.</p>
+          <div class="score-row">
+            <div class="score"><span id="scoreValue">0.0</span><small>/ 100</small></div>
+            <span id="categoryBadge" class="badge">&mdash;</span>
+          </div>
+          <div class="progress" id="progressTrack" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div id="progressFill" class="progress-fill"></div>
+          </div>
+          <div class="progress-scale"><span>0</span><span>40</span><span>60</span><span>75</span><span>100</span></div>
+          <p class="hint" id="scoreNote"></p>
+        </div>
+      </div>
+
+      <div class="grid two">
+        <div class="card">
+          <h2>Personalized Suggestions</h2>
+          <ul id="suggestionsList" class="suggestions"></ul>
+        </div>
+        <div class="card">
+          <h2>Input Summary</h2>
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr><th>Input</th><th>Value</th><th>Dominant set</th><th>Low / Medium / High</th></tr>
+              </thead>
+              <tbody id="summaryBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= MEMBERSHIP FUNCTIONS ================= -->
+    <section id="panel-membership" class="panel" role="tabpanel" hidden>
+      <div class="card intro-card">
+        <h2>Membership Functions</h2>
+        <p class="card-sub">Each input is described by three triangular fuzzy sets. The dashed line marks the current value and the dots show its degree of membership (&mu;) in each set. The output graph shows the aggregated (clipped and combined) result and its centroid.</p>
+      </div>
+      <div class="grid two">
+        <div class="card">
+          <h3>Attendance (%)</h3>
+          <svg id="mf-attendance" class="chart" role="img" aria-label="Attendance membership functions"></svg>
+          <div id="legend-attendance" class="legend"></div>
+        </div>
+        <div class="card">
+          <h3>Internal Assessment Marks</h3>
+          <svg id="mf-internal" class="chart" role="img" aria-label="Internal marks membership functions"></svg>
+          <div id="legend-internal" class="legend"></div>
+        </div>
+        <div class="card">
+          <h3>Daily Study Hours</h3>
+          <svg id="mf-study" class="chart" role="img" aria-label="Study hours membership functions"></svg>
+          <div id="legend-study" class="legend"></div>
+        </div>
+        <div class="card">
+          <h3>Output: Performance Score</h3>
+          <svg id="mf-output" class="chart" role="img" aria-label="Output membership functions and aggregated result"></svg>
+          <div id="legend-output" class="legend"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= RULE INSPECTOR ================= -->
+    <section id="panel-rules" class="panel" role="tabpanel" hidden>
+      <div class="card">
+        <div class="rules-head">
+          <div>
+            <h2>Rule Inspector</h2>
+            <p class="card-sub" id="ruleCount">27 rules</p>
+          </div>
+          <div class="rules-controls">
+            <label for="ruleFilter">Show
+              <select id="ruleFilter">
+                <option value="all">All rules</option>
+                <option value="active">Active only</option>
+                <option value="inactive">Inactive only</option>
+              </select>
+            </label>
+            <label for="ruleSort">Order
+              <select id="ruleSort">
+                <option value="number">Rule number</option>
+                <option value="strength">Strongest first</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <p class="hint">Firing strength = minimum (fuzzy AND) of the three input memberships. A rule is <strong>active</strong> when its strength is above 0.</p>
+        <div class="table-wrap">
+          <table class="table rules-table">
+            <thead>
+              <tr><th>#</th><th>IF (antecedent)</th><th>THEN</th><th>Firing strength</th><th>Status</th></tr>
+            </thead>
+            <tbody id="ruleBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= WHAT-IF ================= -->
+    <section id="panel-whatif" class="panel" role="tabpanel" hidden>
+      <div class="grid two">
+        <div class="card">
+          <h2>Alternative Profile</h2>
+          <p class="card-sub">Adjust a second student profile and compare it with the current one.</p>
+
+          <div class="field">
+            <div class="field-head">
+              <label for="alt_attendance">Attendance</label>
+              <output id="alt_attendanceVal" for="alt_attendance">85%</output>
+            </div>
+            <input type="range" id="alt_attendance" min="0" max="100" step="1" value="85">
+            <div class="scale"><span>0%</span><span>100%</span></div>
+          </div>
+
+          <div class="field">
+            <div class="field-head">
+              <label for="alt_internal">Internal Assessment Marks</label>
+              <output id="alt_internalVal" for="alt_internal">75 / 100</output>
+            </div>
+            <input type="range" id="alt_internal" min="0" max="100" step="1" value="75">
+            <div class="scale"><span>0</span><span>100</span></div>
+          </div>
+
+          <div class="field">
+            <div class="field-head">
+              <label for="alt_study">Daily Study Hours</label>
+              <output id="alt_studyVal" for="alt_study">6.0 hrs</output>
+            </div>
+            <input type="range" id="alt_study" min="0" max="10" step="0.5" value="6">
+            <div class="scale"><span>0 hrs</span><span>10 hrs</span></div>
+          </div>
+
+          <div class="btn-row">
+            <button id="copyCurrentBtn" class="btn btn-ghost" type="button">Copy current profile</button>
+            <button id="resetAltBtn" class="btn btn-ghost" type="button">Reset alternative</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Comparison</h2>
+          <p class="card-sub" id="cmpCurrentProfile"></p>
+
+          <div class="cmp-block">
+            <div class="cmp-label">Current profile</div>
+            <div class="cmp-row">
+              <div class="score score-sm"><span id="cmpCurrentScore">0.0</span><small>/ 100</small></div>
+              <span id="cmpCurrentBadge" class="badge">&mdash;</span>
+            </div>
+            <div class="progress"><div id="cmpCurrentBar" class="progress-fill"></div></div>
+          </div>
+
+          <div class="cmp-block">
+            <div class="cmp-label">Alternative profile</div>
+            <div class="cmp-row">
+              <div class="score score-sm"><span id="cmpAltScore">0.0</span><small>/ 100</small></div>
+              <span id="cmpAltBadge" class="badge">&mdash;</span>
+            </div>
+            <div class="progress"><div id="cmpAltBar" class="progress-fill"></div></div>
+          </div>
+
+          <div class="delta-row">
+            <span>Difference</span>
+            <strong id="cmpDelta" class="delta same">0.0</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Comparison Insights</h2>
+        <ul id="insightsList" class="suggestions"></ul>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <p>Illustrative fuzzy-logic demonstration for academic use. Predictions are not scientifically validated and must not be used for real academic decisions.</p>
+    </div>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
